@@ -1,0 +1,112 @@
+---
+title: "Sales"
+author: "Amala Ann Mathew"
+date: "2024-06-09"
+output: word_document
+---
+
+```{r}
+#Importing the necessary libraries:
+library(tseries)
+library(astsa)
+library(forecast)
+library(seastests)
+```
+
+
+```{r}
+#Reading the data:
+data <- read.csv(file.choose())
+head(data)
+attach(data)
+```
+
+
+```{r}
+#Shapiro-Wilk test for normality:
+
+#H0: Data is normal
+#H1: Data is not normal
+
+shapiro.test(Sales)  
+
+```
+Interpretation:
+The Shapiro-Wilk test is a hypothesis test that is applied to a sample with a null hypothesis that the sample has been generated from a normal distribution. If the P-value is low(<0.05),we can reject the null hypothesis and say that the sample has not been generated from a normal distribution.
+
+Since the P- value is greater than 0.05, the observations of the Sales column are normally distributed as indicated by the Shapiro-Wilk test [p-value is 0.065].
+
+```{r}
+#Since the given data is a data frame we need to convert it into a time series object for an effective time series analysis 
+
+df <- ts(Sales, start = 2018,  frequency = 12)
+df
+class(df)
+```
+
+Interpretation:
+The data frame is now transformed into Time series data. 
+```{r}
+# Time series plot
+ts.plot(df)
+```
+Interpretation:
+There is a seasonal component.Seasonality is observed when the data experiences regular and predictable changes that recur every year.  There is a peak in sales at the end of every year. This can be attributed to holiday shopping.
+
+```{r}
+#Checking for seasonality:
+isSeasonal(df, test = "combined",freq = 12)
+isSeasonal(df, test = "qs", freq = 12)
+isSeasonal(df, test = "kw", freq = 12)
+isSeasonal(df, test = "fried", freq = 12)
+isSeasonal(df, test = "welch", freq = 12)
+```
+Interpretation:
+We mathematically confirm seasonality.
+
+```{r}
+# Autocorrelation function plot:
+acf(df, main="ACF of the Sales data")
+```
+Interpretation:
+From the ACF plot it is observed that there is no trend component in particular. 
+
+```{r}
+#non-stationary model
+#finding the best ARIMA model 
+fit = auto.arima(df , seasonal = TRUE)
+fit
+```
+The ARIMA(0,1,1)(0,1,1)[12] with the specified coefficients and diagnostic values suggests a reasonable fit for forecasting future values.
+```{r}
+# Forecasting can only be done only if residual analysis is satisfied:
+
+#Residual analysis for model 1:
+r = resid(fit)
+
+acf(r, main = "ACF plot of the residuals")            
+
+
+```
+Interpretation:
+The ACF of the residuals are non-significant at different lags,that is the residuals do not exhibit any systematic patterns or correlation. Therefore the the model has adequately captured the underlying structure of the time series data. 
+```{r}
+#Box-Pierce test to examine the null hypothesis of independence.
+#H0: There is no significant autocorrelation.
+#H1: There is some significant autocorrelation.
+Box.test(r)       
+
+```
+Interpretation:
+Since the value is greater than 0.05 we fail to reject the null hypothesis. Therefore the residuals are uncorrelated
+
+
+```{r}
+# Forecasting:
+forecast(fit, h = 4)    #h: no. of observations to be forecast.
+```
+Interpretation:
+The forecasted values of sales during first quarter of 2022 are given above. Forecast for the month January is 46,565.14, Forecast for the month February is 36,923.66,  Forecast for the month March is 72936.39,  Forecast for the month April is 55,940.30
+
+
+

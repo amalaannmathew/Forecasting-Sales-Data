@@ -1,0 +1,128 @@
+---
+title: "Profit"
+author: "Amala Ann Mathew"
+date: "2024-06-09"
+output: word_document
+---
+
+```{r}
+#Importing the necessary libraries:
+library(tseries)
+library(astsa)
+library(forecast)
+library(seastests)
+```
+
+
+```{r}
+#Reading the data:
+data <- read.csv(file.choose())
+head(data)
+attach(data)
+```
+
+
+```{r}
+#Shapiro-Wilk test for normality:
+
+#H0: Data is normal
+#H1: Data is not normal
+
+shapiro.test(Profit) 
+```
+Interpretation:
+The Shapiro-Wilk test is a hypothesis test that is applied to a sample with a null hypothesis that the sample has been generated from a normal distribution. If the P-value is low(<0.05),we can reject the null hypothesis and say that the sample has not been generated from a normal distribution.
+
+Since the P- value is greater than 0.05, the observations of the Sales column are normally distributed as indicated by the Shapiro-Wilk test [p-value is 0.1065].
+
+```{r}
+#Since the given data is a data frame we need to convert it into a time series object for an effective time series analysis 
+df <- ts(Profit, start = 2018,  frequency = 12)
+df
+class(df)
+```
+Interpretation:
+The data frame is now transformed into Time series data
+
+```{r}
+# Time series plot
+ts.plot(df)
+```
+Interpretation:
+From the time series plot it is observed that there is  no seasonal component.
+
+```{r}
+# Checking for seasonality:
+isSeasonal(df, test = "combined",freq = 12)
+isSeasonal(df, test = "qs", freq = 12)
+isSeasonal(df, test = "kw", freq = 12)
+isSeasonal(df, test = "fried", freq = 12)
+```
+Interpretation:
+Mathematically proved that there doesn't exist seasonality. 
+
+```{r}
+# Autocorrelation function plot:
+acf(df, main="ACF Plot of the Profit data")
+```
+Interpretation:
+From the ACF plot it is observed that there is no significant lags. That means Non-stationary.
+```{r}
+#Augmented Dickey-Fuller Test
+
+#HO:Data is non-stationary
+#H1:Data is stationary
+adf.test(df)
+```
+Interpretation:
+Since the p-value is less than 0.05 we reject the null hypothesis. This means that the data is stationary.
+```{r}
+#stationary model
+#finding the best ARIMA model 
+fit = auto.arima(df , seasonal = FALSE) 
+fit
+```
+Interpretation:
+The ARIMA(2,1,0)  with the specified coefficients and diagnostic values suggests a reasonable fit for forecasting future values.
+
+```{r}
+# Forecasting can only be done only if residual analysis is satisfied:
+
+#Residual analysis for model 1:
+r = resid(fit)
+
+acf(r, main = "ACF plot of the residuals")            
+
+
+```
+Interpretation:
+The ACF of the residuals are non-significant at different lags,that is the residuals do not exhibit any systematic patterns or correlation. Therefore the the model has adequately captured the underlying structure of the time series data. 
+
+```{r}
+#Shapiro-Wilk test to check the normality of the residuals:
+#H0: Residuals are normal.
+#H1: Residuals are not normal.
+shapiro.test(r) 
+
+#Q-Q plot:
+qqnorm(r)
+qqline(r)
+
+```
+Interpretation:
+Since the p-value is greater than 0.05 we fail to reject the null hypothesis.Therefore the residual is normal
+
+```{r}
+#Box-Pierce test to examine the null hypothesis of independence.
+#H0: There is no significant autocorrelation.
+#H1: There is some significant autocorrelation.
+Box.test(r) #lag = p + q; p=1, q= 1       
+#p-value > 0.05 -> fail to reject null hypothesis -> uncorrelated
+```
+Since the value is greater than 0.05 we fail to reject the null hypothesis. Therefore the residuals are uncorrelated
+```{r}
+# Forecasting:
+forecast(fit, h = 4)    #h: no. of observations to be forecast.
+```
+
+The forecasted values of profit during first quarter of 2022 are given above.
